@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas测试</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        
+        #test-canvas {
+            border: 2px solid #333;
+            background: white;
+            display: block;
+            margin: 20px auto;
+        }
+        
+        .info {
+            text-align: center;
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h1>Canvas功能测试</h1>
+        <p>如果Canvas工作正常，下面应该显示彩色图形</p>
+    </div>
+    
+    <canvas id="test-canvas" width="800" height="600"></canvas>
+    
+    <div class="info">
+        <p id="status">正在测试Canvas...</p>
+    </div>
+
+    <script>
+        console.log('开始Canvas测试');
+        
+        const canvas = document.getElementById('test-canvas');
+        const ctx = canvas.getContext('2d');
+        const statusEl = document.getElementById('status');
+        
+        if (!canvas || !ctx) {
+            statusEl.textContent = '❌ Canvas不可用';
+            statusEl.style.color = 'red';
+            console.error('Canvas不可用');
+        } else {
+            try {
+                // 清空画布
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制渐变背景
+                const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+                gradient.addColorStop(0, '#98FB98');
+                gradient.addColorStop(0.5, '#87CEEB');
+                gradient.addColorStop(1, '#F0FFF0');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // 绘制标题
+                ctx.fillStyle = '#2E7D32';
+                ctx.font = 'bold 36px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('生态防御游戏', canvas.width / 2, 80);
+                
+                // 绘制副标题
+                ctx.fillStyle = '#4CAF50';
+                ctx.font = '18px Arial';
+                ctx.fillText('Canvas渲染测试成功！', canvas.width / 2, 120);
+                
+                // 绘制彩色矩形
+                const colors = ['#4CAF50', '#2196F3', '#F44336', '#FF9800'];
+                const names = ['厨余', '可回收', '有害', '其他'];
+                
+                for (let i = 0; i < 4; i++) {
+                    const x = 150 + i * 150;
+                    const y = 200;
+                    
+                    // 垃圾桶
+                    ctx.fillStyle = colors[i];
+                    ctx.fillRect(x - 30, y, 60, 80);
+                    
+                    // 盖子
+                    ctx.fillRect(x - 35, y - 10, 70, 15);
+                    
+                    // 标签
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.fillText(names[i], x, y + 45);
+                }
+                
+                // 绘制移动的圆形
+                let animationTime = 0;
+                function animate() {
+                    // 清除动画区域
+                    ctx.clearRect(0, 350, canvas.width, 100);
+                    
+                    // 重绘背景
+                    ctx.fillStyle = gradient;
+                    ctx.fillRect(0, 350, canvas.width, 100);
+                    
+                    // 绘制移动的圆形
+                    const x = 50 + (Math.sin(animationTime / 1000) + 1) * (canvas.width - 100) / 2;
+                    ctx.beginPath();
+                    ctx.arc(x, 400, 20, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FF6B35';
+                    ctx.fill();
+                    
+                    // 绘制轨道
+                    ctx.strokeStyle = '#4682B4';
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(30, 400);
+                    ctx.lineTo(canvas.width - 30, 400);
+                    ctx.stroke();
+                    
+                    animationTime += 16;
+                    requestAnimationFrame(animate);
+                }
+                
+                animate();
+                
+                // 绘制说明文字
+                ctx.fillStyle = '#333333';
+                ctx.font = '14px Arial';
+                ctx.textAlign = 'left';
+                ctx.fillText('✓ Canvas 2D上下文正常', 20, 500);
+                ctx.fillText('✓ 基本图形绘制正常', 20, 520);
+                ctx.fillText('✓ 文字渲染正常', 20, 540);
+                ctx.fillText('✓ 动画循环正常', 20, 560);
+                
+                statusEl.textContent = '✅ Canvas测试成功！所有功能正常';
+                statusEl.style.color = 'green';
+                console.log('Canvas测试成功');
+                
+            } catch (error) {
+                statusEl.textContent = '❌ Canvas测试失败: ' + error.message;
+                statusEl.style.color = 'red';
+                console.error('Canvas测试失败:', error);
+            }
+        }
+    </script>
+</body>
+</html>

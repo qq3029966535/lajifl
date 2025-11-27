@@ -1,0 +1,107 @@
+# Docker Compose配置 - 生态防御游戏
+version: '3.8'
+
+services:
+  # 游戏应用
+  eco-defense-game:
+    build:
+      context: ../../
+      dockerfile: deploy/docker/Dockerfile
+    container_name: eco-defense-game
+    restart: unless-stopped
+    ports:
+      - "80:8080"
+      - "443:8443"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      # SSL证书挂载（如果使用）
+      - ./ssl:/etc/ssl/certs:ro
+      # 日志挂载
+      - ./logs:/var/log/nginx
+    networks:
+      - eco-defense-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.eco-defense.rule=Host(`eco-defense-game.com`)"
+      - "traefik.http.routers.eco-defense.tls=true"
+      - "traefik.http.routers.eco-defense.tls.certresolver=letsencrypt"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # 反向代理（可选）
+  traefik:
+    image: traefik:v2.10
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080" # Traefik仪表板
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.tlschallenge=true
+      - --certificatesresolvers.letsencrypt.acme.email=admin@eco-defense-game.com
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./letsencrypt:/letsencrypt
+    networks:
+      - eco-defense-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.eco-defense-game.com`)"
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+
+  # 监控服务（可选）
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    networks:
+      - eco-defense-network
+
+  # 日志聚合（可选）
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    networks:
+      - eco-defense-network
+
+networks:
+  eco-defense-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

@@ -1,0 +1,31 @@
+{
+  "name": "eco-defense-game",
+  "version": "1.0.0",
+  "description": "生态防御游戏 - 垃圾分类防御游戏",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "build:analyze": "vite build --mode analyze",
+    "build:prod": "NODE_ENV=production vite build",
+    "serve": "vite preview --port 4173",
+    "lint": "echo 'Linting...' && echo 'No linter configured'",
+    "format": "echo 'Formatting...' && echo 'No formatter configured'",
+    "deploy:build": "npm run test && npm run build:prod",
+    "deploy:docker": "docker build -f deploy/docker/Dockerfile -t eco-defense-game:latest .",
+    "deploy:docker-compose": "cd deploy/docker && docker-compose up -d",
+    "clean": "rm -rf dist node_modules/.cache",
+    "start": "npm run build && npm run serve"
+  },
+  "devDependencies": {
+    "vite": "^5.0.0",
+    "jest": "^29.0.0"
+  },
+  "dependencies": {
+    "three": "^0.158.0"
+  }
+}
