@@ -96,8 +96,50 @@ class SimpleGame {
         this.gameTime = 0; // 游戏总时间
         this.levelTime = 120; // 关卡时间限制（秒）
         this.remainingTime = this.levelTime;
+        this.gameState = 'playing'; // 'playing', 'levelComplete', 'gameOver', 'paused'
+        this.totalTrashSpawned = 0; // 本关卡生成的垃圾总数
+        this.levelTrashTarget = 20; // 每关需要处理的垃圾数量
         
-        this.initializeTracks();
+        // 关卡配置
+        this.levelConfig = {
+            1: { 
+                tracks: 1, 
+                trashTypes: ['kitchen_waste', 'recyclable', 'hazardous'], 
+                timeLimit: 90,
+                trashTarget: 15,
+                description: '基础3类垃圾分类'
+            },
+            2: { 
+                tracks: 2, 
+                trashTypes: ['kitchen_waste', 'recyclable', 'hazardous', 'other'], 
+                timeLimit: 120,
+                trashTarget: 20,
+                description: '增加其他垃圾类型'
+            },
+            3: { 
+                tracks: 3, 
+                trashTypes: ['kitchen_waste', 'recyclable', 'hazardous', 'other'], 
+                timeLimit: 150,
+                trashTarget: 25,
+                description: '3轨道4类垃圾'
+            },
+            4: { 
+                tracks: 4, 
+                trashTypes: ['kitchen_waste', 'recyclable', 'hazardous', 'other'], 
+                timeLimit: 180,
+                trashTarget: 30,
+                description: '4轨道高难度挑战'
+            },
+            5: { 
+                tracks: 5, 
+                trashTypes: ['kitchen_waste', 'recyclable', 'hazardous', 'other'], 
+                timeLimit: 210,
+                trashTarget: 35,
+                description: '终极5轨道挑战'
+            }
+        };
+        
+        this.initializeLevel();
     }
 
     async init() {
@@ -126,6 +168,9 @@ class SimpleGame {
             // 初始化UI状态
             this.updateBinSelector();
             
+            // 初始化第一关
+            this.initializeLevel();
+            
             // 开始游戏循环
             this.start();
             
@@ -137,18 +182,38 @@ class SimpleGame {
         }
     }
 
-    initializeTracks() {
-        // 创建3条轨道
-        for (let i = 0; i < 3; i++) {
+    initializeLevel() {
+        // 重置关卡状态
+        this.tracks = [];
+        this.placedBins = [];
+        this.trashItems = [];
+        this.totalTrashSpawned = 0;
+        this.gameTime = 0;
+        this.gameState = 'playing';
+        
+        // 获取当前关卡配置
+        const config = this.levelConfig[this.currentLevel];
+        this.levelTime = config.timeLimit;
+        this.remainingTime = this.levelTime;
+        this.levelTrashTarget = config.trashTarget;
+        
+        // 根据关卡创建轨道
+        const trackCount = config.tracks;
+        const trackSpacing = Math.min(80, (this.canvas ? (this.canvas.height - 400) / trackCount : 80));
+        const startY = 280;
+        
+        for (let i = 0; i < trackCount; i++) {
             this.tracks.push({
                 id: i + 1,
-                y: 300 + i * 80,
+                y: startY + i * trackSpacing,
                 startX: 100,
                 endX: 1100,
                 width: 50,
                 height: 50
             });
         }
+        
+        console.log(`初始化关卡 ${this.currentLevel}: ${trackCount}条轨道, ${config.trashTypes.length}种垃圾类型`);
     }
 
     setupEvents() {
@@ -265,11 +330,19 @@ class SimpleGame {
     }
 
     update() {
+        if (this.gameState !== 'playing') return;
+        
         this.time += 16; // 假设16ms每帧
         this.gameTime += 16;
         
         // 更新剩余时间
         this.remainingTime = Math.max(0, this.levelTime - Math.floor(this.gameTime / 1000));
+        
+        // 检查时间到
+        if (this.remainingTime <= 0) {
+            this.checkGameOver();
+            return;
+        }
         
         // 生成垃圾
         this.spawnTrash();
@@ -279,16 +352,25 @@ class SimpleGame {
         
         // 检测碰撞和收集
         this.checkCollisions();
+        
+        // 检查关卡完成条件
+        this.checkLevelComplete();
     }
 
     spawnTrash() {
+        // 检查是否还需要生成垃圾
+        if (this.totalTrashSpawned >= this.levelTrashTarget || this.gameState !== 'playing') {
+            return;
+        }
+        
         if (this.time - this.lastTrashSpawn > this.trashSpawnInterval) {
             // 随机选择轨道
             const randomTrack = this.tracks[Math.floor(Math.random() * this.tracks.length)];
             
-            // 随机选择垃圾类型
-            const trashTypes = Object.keys(this.trashConfig);
-            const randomType = trashTypes[Math.floor(Math.random() * trashTypes.length)];
+            // 根据当前关卡选择垃圾类型
+            const config = this.levelConfig[this.currentLevel];
+            const availableTypes = config.trashTypes;
+            const randomType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
             const trashConfig = this.trashConfig[randomType];
             
             // 随机选择具体垃圾物品
@@ -312,7 +394,10 @@ class SimpleGame {
             };
             
             this.trashItems.push(newTrash);
+            this.totalTrashSpawned++;
             this.lastTrashSpawn = this.time;
+            
+            console.log(`生成垃圾 ${this.totalTrashSpawned}/${this.levelTrashTarget}: ${newTrash.name}`);
         }
     }
 
@@ -330,6 +415,9 @@ class SimpleGame {
                     this.trashItems.splice(i, 1);
                     this.missedTrash++;
                     console.log(`垃圾未被收集: ${trash.name}，已走完轨道`);
+                    
+                    // 检查游戏失败条件：任一垃圾通过轨道
+                    this.checkGameOver();
                 }
             }
         }
@@ -462,38 +550,72 @@ class SimpleGame {
             // 绘制收集效果
             this.drawEffects();
             
-            // 绘制游戏信息（左侧，调整位置避免与底部选择器重叠）
-            this.ctx.fillStyle = '#4CAF50';
-            this.ctx.font = '14px Arial';
-            this.ctx.textAlign = 'left';
-            this.ctx.fillText(`当前选择: ${this.binConfig[this.selectedBinType].name}`, 50, 480);
-            this.ctx.fillText(`已放置垃圾桶: ${this.placedBins.length}/3`, 50, 500);
-            
-            // 游戏机制说明
-            this.ctx.fillStyle = '#FF6B35';
-            this.ctx.font = '12px Arial';
-            this.ctx.fillText('游戏机制:', 50, 525);
-            this.ctx.fillText('• 只有正确的垃圾桶才能收集垃圾', 50, 540);
-            this.ctx.fillText('• 错误的垃圾桶无法阻止垃圾继续前进', 50, 555);
-            this.ctx.fillText('• 点击轨道可重新放置垃圾桶', 50, 570);
-            
-            // 显示当前选中垃圾桶的收集类型
-            const selectedConfig = this.binConfig[this.selectedBinType];
-            const collectType = selectedConfig.collectTypes[0];
-            const trashConfig = this.trashConfig[collectType];
-            this.ctx.fillStyle = '#666666';
-            this.ctx.font = '12px Arial';
-            this.ctx.fillText(`${selectedConfig.name}垃圾桶收集: ${trashConfig.name}`, 50, 595);
-            
-            // 显示该类型的垃圾示例
-            const examples = trashConfig.items.slice(0, 3).map(item => item.name).join(', ');
-            this.ctx.fillText(`示例: ${examples}等`, 50, 610);
+
             
             // 绘制左上角HUD
             this.drawHUD();
             
+            // 绘制游戏状态覆盖层
+            this.drawGameStateOverlay();
+            
         } catch (error) {
             console.error('渲染错误:', error);
+        }
+    }
+    
+    drawGameStateOverlay() {
+        if (this.gameState === 'levelComplete') {
+            // 关卡完成覆盖层
+            this.ctx.save();
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            this.ctx.fillStyle = '#4CAF50';
+            this.ctx.font = 'bold 48px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('关卡完成！', this.canvas.width / 2, this.canvas.height / 2 - 50);
+            
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = '24px Arial';
+            this.ctx.fillText('正在进入下一关...', this.canvas.width / 2, this.canvas.height / 2 + 20);
+            
+            // 绘制关卡完成统计
+            this.ctx.font = '18px Arial';
+            this.ctx.fillText(`关卡 ${this.currentLevel} 完成`, this.canvas.width / 2, this.canvas.height / 2 + 60);
+            this.ctx.fillText(`收集垃圾: ${this.collectedCount}`, this.canvas.width / 2, this.canvas.height / 2 + 85);
+            this.ctx.fillText(`奖励分数: +100`, this.canvas.width / 2, this.canvas.height / 2 + 110);
+            
+            this.ctx.restore();
+        } else if (this.gameState === 'gameComplete') {
+            // 游戏全部完成覆盖层
+            this.ctx.save();
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // 绘制烟花效果背景
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.font = 'bold 64px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('🎉 恭喜通关！ 🎉', this.canvas.width / 2, this.canvas.height / 2 - 80);
+            
+            this.ctx.fillStyle = '#4CAF50';
+            this.ctx.font = 'bold 36px Arial';
+            this.ctx.fillText('生态防御大师！', this.canvas.width / 2, this.canvas.height / 2 - 20);
+            
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = '24px Arial';
+            this.ctx.fillText(`最终分数: ${this.score}`, this.canvas.width / 2, this.canvas.height / 2 + 30);
+            this.ctx.fillText(`总收集垃圾: ${this.collectedCount}`, this.canvas.width / 2, this.canvas.height / 2 + 60);
+            
+            const totalAccuracy = this.collectedCount + this.missedTrash > 0 ? 
+                Math.round((this.collectedCount / (this.collectedCount + this.missedTrash)) * 100) : 100;
+            this.ctx.fillText(`总准确率: ${totalAccuracy}%`, this.canvas.width / 2, this.canvas.height / 2 + 90);
+            
+            this.ctx.font = '18px Arial';
+            this.ctx.fillStyle = '#CCCCCC';
+            this.ctx.fillText('感谢您为环保事业做出的贡献！', this.canvas.width / 2, this.canvas.height / 2 + 130);
+            
+            this.ctx.restore();
         }
     }
 
@@ -644,41 +766,51 @@ class SimpleGame {
     drawHUD() {
         this.ctx.save();
         
-        // HUD背景
-        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        this.ctx.fillRect(10, 10, 300, 80);
+        // HUD背景 - 扩大以容纳更多信息
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        this.ctx.fillRect(10, 10, 400, 100);
         this.ctx.strokeStyle = '#4CAF50';
         this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(10, 10, 300, 80);
+        this.ctx.strokeRect(10, 10, 400, 100);
         
         // HUD文字
         this.ctx.fillStyle = '#FFFFFF';
         this.ctx.font = 'bold 16px Arial';
         this.ctx.textAlign = 'left';
         
-        // 分数
-        this.ctx.fillText(`分数: ${this.score}`, 20, 35);
+        // 第一行：关卡、分数、时间
+        const config = this.levelConfig[this.currentLevel];
+        this.ctx.fillText(`关卡 ${this.currentLevel}/5: ${config.description}`, 20, 30);
+        this.ctx.fillText(`分数: ${this.score}`, 20, 50);
         
         // 时间（格式化为分:秒）
         const minutes = Math.floor(this.remainingTime / 60);
         const seconds = this.remainingTime % 60;
         const timeText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        this.ctx.fillText(`时间: ${timeText}`, 120, 35);
+        this.ctx.fillText(`时间: ${timeText}`, 150, 50);
         
-        // 关卡
-        this.ctx.fillText(`关卡: ${this.currentLevel}`, 220, 35);
+        // 关卡进度
+        const progress = `${this.totalTrashSpawned}/${this.levelTrashTarget}`;
+        this.ctx.fillText(`垃圾进度: ${progress}`, 250, 50);
         
         // 统计信息
         this.ctx.font = '12px Arial';
         this.ctx.fillStyle = '#CCCCCC';
-        this.ctx.fillText(`已收集: ${this.collectedCount}`, 20, 55);
-        this.ctx.fillText(`未收集: ${this.missedTrash}`, 120, 55);
-        this.ctx.fillText(`当前垃圾: ${this.trashItems.length}`, 220, 55);
+        this.ctx.fillText(`已收集: ${this.collectedCount}`, 20, 70);
+        this.ctx.fillText(`未收集: ${this.missedTrash}`, 120, 70);
+        this.ctx.fillText(`当前垃圾: ${this.trashItems.length}`, 220, 70);
         
         // 准确率
         const accuracy = this.collectedCount + this.missedTrash > 0 ? 
             Math.round((this.collectedCount / (this.collectedCount + this.missedTrash)) * 100) : 100;
-        this.ctx.fillText(`准确率: ${accuracy}%`, 20, 75);
+        this.ctx.fillText(`准确率: ${accuracy}%`, 320, 70);
+        
+        // 轨道数量提示
+        this.ctx.fillText(`轨道数: ${this.tracks.length}`, 20, 90);
+        
+        // 可用垃圾类型
+        const availableTypes = config.trashTypes.map(type => this.trashConfig[type].name).join(', ');
+        this.ctx.fillText(`垃圾类型: ${availableTypes}`, 120, 90);
         
         this.ctx.restore();
     }
@@ -704,16 +836,27 @@ class SimpleGame {
         this.ctx.textAlign = 'center';
         this.ctx.fillText('选择垃圾桶类型 (按数字键1-4)', this.canvas.width / 2, selectorY - 5);
         
-        // 绘制四个垃圾桶选项
-        const binTypes = [
-            { id: 1, name: '厨余', color: '#4CAF50', symbol: '🥬' },
-            { id: 2, name: '可回收', color: '#2196F3', symbol: '♻️' },
-            { id: 3, name: '有害', color: '#F44336', symbol: '☢️' },
-            { id: 4, name: '其他', color: '#FF9800', symbol: '🗑️' }
+        // 根据当前关卡显示可用的垃圾桶选项
+        const config = this.levelConfig[this.currentLevel];
+        const availableTypes = config.trashTypes;
+        
+        const allBinTypes = [
+            { id: 1, name: '厨余', color: '#4CAF50', symbol: '🥬', type: 'kitchen_waste' },
+            { id: 2, name: '可回收', color: '#2196F3', symbol: '♻️', type: 'recyclable' },
+            { id: 3, name: '有害', color: '#F44336', symbol: '☢️', type: 'hazardous' },
+            { id: 4, name: '其他', color: '#FF9800', symbol: '🗑️', type: 'other' }
         ];
         
+        // 只显示当前关卡可用的垃圾桶类型
+        const binTypes = allBinTypes.filter(bin => availableTypes.includes(bin.type));
+        
+        // 动态调整选择器宽度和间距
+        const binCount = binTypes.length;
+        const binSpacing = Math.min(140, (selectorWidth - 40) / binCount);
+        const startX = selectorX + (selectorWidth - binCount * binSpacing) / 2 + binSpacing / 2;
+        
         binTypes.forEach((binType, index) => {
-            const x = selectorX + index * 140 + 70; // 增加间距
+            const x = startX + index * binSpacing;
             const y = selectorY + 50;
             const isSelected = binType.id === this.selectedBinType;
             
@@ -752,6 +895,15 @@ class SimpleGame {
             this.ctx.fillStyle = isSelected ? '#FFFFFF' : '#CCCCCC';
             this.ctx.font = 'bold 14px Arial';
             this.ctx.fillText(binType.name, x, y + 25);
+            
+            // 如果垃圾桶在当前关卡不可用，显示禁用状态
+            if (!availableTypes.includes(binType.type)) {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                this.ctx.fillRect(x - 65, y - 35, 130, 70);
+                this.ctx.fillStyle = '#FF0000';
+                this.ctx.font = 'bold 20px Arial';
+                this.ctx.fillText('✗', x, y);
+            }
         });
         
         this.ctx.restore();
@@ -885,6 +1037,96 @@ class SimpleGame {
         }
         
         this.ctx.restore();
+    }
+
+    checkLevelComplete() {
+        // 检查是否所有垃圾都被正确分类
+        if (this.totalTrashSpawned >= this.levelTrashTarget && 
+            this.trashItems.length === 0 && 
+            this.missedTrash === 0) {
+            
+            this.gameState = 'levelComplete';
+            console.log(`关卡 ${this.currentLevel} 完成！`);
+            
+            // 延迟2秒后自动进入下一关
+            setTimeout(() => {
+                this.nextLevel();
+            }, 2000);
+        }
+    }
+    
+    checkGameOver() {
+        // 游戏失败：任一垃圾通过轨道或时间到
+        if (this.missedTrash > 0 || this.remainingTime <= 0) {
+            this.gameState = 'gameOver';
+            console.log('游戏失败！');
+            this.showGameOverDialog();
+        }
+    }
+    
+    nextLevel() {
+        if (this.currentLevel < 5) {
+            this.currentLevel++;
+            this.score += 100; // 关卡完成奖励
+            this.initializeLevel();
+            console.log(`进入关卡 ${this.currentLevel}`);
+        } else {
+            // 游戏全部完成
+            this.gameState = 'gameComplete';
+            console.log('恭喜！游戏全部完成！');
+        }
+    }
+    
+    restartLevel() {
+        this.missedTrash = 0;
+        this.collectedCount = 0;
+        this.score = Math.max(0, this.score - 50); // 重新开始扣分
+        this.initializeLevel();
+        console.log(`重新开始关卡 ${this.currentLevel}`);
+    }
+    
+    continueLevel() {
+        this.gameState = 'playing';
+        this.missedTrash = 0; // 重置未收集计数，给玩家第二次机会
+        console.log(`继续关卡 ${this.currentLevel}`);
+    }
+    
+    showGameOverDialog() {
+        // 创建游戏失败对话框
+        const dialog = document.createElement('div');
+        dialog.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 1000;
+            border: 3px solid #F44336;
+        `;
+        
+        dialog.innerHTML = `
+            <h2 style="color: #F44336; margin-bottom: 20px;">关卡失败！</h2>
+            <p style="margin-bottom: 20px;">垃圾通过了轨道或时间已到</p>
+            <button id="restart-btn" style="margin: 10px; padding: 10px 20px; font-size: 16px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">重新开始</button>
+            <button id="continue-btn" style="margin: 10px; padding: 10px 20px; font-size: 16px; background: #2196F3; color: white; border: none; border-radius: 5px; cursor: pointer;">继续本关</button>
+        `;
+        
+        document.body.appendChild(dialog);
+        
+        // 添加按钮事件
+        document.getElementById('restart-btn').onclick = () => {
+            document.body.removeChild(dialog);
+            this.restartLevel();
+        };
+        
+        document.getElementById('continue-btn').onclick = () => {
+            document.body.removeChild(dialog);
+            this.continueLevel();
+        };
     }
 
     showError(message) {
