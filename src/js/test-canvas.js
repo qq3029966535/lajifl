@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillStyle = '#2E7D32';
         ctx.font = 'bold 48px Arial';
         ctx.textAlign = 'center';
-        ctx.fillText('生态防御游戏', canvas.width / 2, 150);
+        ctx.fillText('保卫家园游戏', canvas.width / 2, 150);
         console.log('标题绘制完成');
         
         // 绘制测试矩形

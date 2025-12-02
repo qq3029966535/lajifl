@@ -1,7 +1,7 @@
 {
   "name": "eco-defense-game",
   "version": "1.0.0",
-  "description": "生态防御游戏 - 垃圾分类防御游戏",
+  "description": "保卫家园游戏 - 垃圾分类防御游戏",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -18,6 +18,7 @@
     "deploy:build": "npm run test && npm run build:prod",
     "deploy:docker": "docker build -f deploy/docker/Dockerfile -t eco-defense-game:latest .",
     "deploy:docker-compose": "cd deploy/docker && docker-compose up -d",
+    "deploy:gh-pages": "deploy.bat",
     "clean": "rm -rf dist node_modules/.cache",
     "start": "npm run build && npm run serve"
   },

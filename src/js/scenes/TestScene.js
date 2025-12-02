@@ -37,7 +37,7 @@ export class TestScene extends Scene {
             ctx.fillStyle = '#2E7D32';
             ctx.font = 'bold 32px Arial';
             ctx.textAlign = 'center';
-            ctx.fillText('生态防御游戏', ctx.canvas.width / 2, 100);
+            ctx.fillText('保卫家园游戏', ctx.canvas.width / 2, 100);
             
             // 绘制副标题
             ctx.fillStyle = '#4CAF50';

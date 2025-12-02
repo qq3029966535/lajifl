@@ -500,7 +500,7 @@ class SimpleGame {
             this.ctx.fillStyle = '#2E7D32';
             this.ctx.font = 'bold 48px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText('生态防御游戏', this.canvas.width / 2, 100);
+            this.ctx.fillText('保卫家园游戏', this.canvas.width / 2, 100);
             
             // 绘制副标题
             this.ctx.fillStyle = '#4CAF50';

@@ -11,14 +11,7 @@ export default defineConfig({
     emptyOutDir: true,
     
     // 生产环境优化
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true, // 移除console.log
-        drop_debugger: true, // 移除debugger
-        pure_funcs: ['console.log', 'console.info', 'console.debug'] // 移除特定函数调用
-      }
-    },
+    minify: 'esbuild',
     
     // 代码分割
     rollupOptions: {
@@ -26,59 +19,6 @@ export default defineConfig({
         main: resolve(__dirname, 'src/index.html')
       },
       output: {
-        // 分块策略
-        manualChunks: {
-          // 核心游戏引擎
-          'game-core': [
-            './js/core/GameEngine.js',
-            './js/core/SceneManager.js',
-            './js/core/Vector2.js'
-          ],
-          
-          // ECS系统
-          'game-ecs': [
-            './js/ecs/Entity.js',
-            './js/ecs/Component.js',
-            './js/ecs/ComponentManager.js'
-          ],
-          
-          // 游戏系统
-          'game-systems': [
-            './js/systems/TrackSystem.js',
-            './js/systems/TrashBinSystem.js',
-            './js/systems/TrashZombieSystem.js',
-            './js/systems/CollisionSystem.js',
-            './js/systems/CollectionSystem.js',
-            './js/systems/LevelSystem.js'
-          ],
-          
-          // 音频系统
-          'game-audio': [
-            './js/audio/AudioManager.js',
-            './js/audio/MusicManager.js'
-          ],
-          
-          // UI系统
-          'game-ui': [
-            './js/ui/HUDSystem.js',
-            './js/ui/FeedbackSystem.js',
-            './js/ui/ModalSystem.js'
-          ],
-          
-          // 数据管理
-          'game-data': [
-            './js/data/StatisticsManager.js',
-            './js/data/ProgressManager.js'
-          ],
-          
-          // 工具和效果
-          'game-utils': [
-            './js/utils/CollisionUtils.js',
-            './js/effects/ParticleSystem.js',
-            './js/animation/TrashBinAnimator.js'
-          ]
-        },
-        
         // 文件命名
         chunkFileNames: 'assets/js/[name]-[hash].js',
         entryFileNames: 'assets/js/[name]-[hash].js',

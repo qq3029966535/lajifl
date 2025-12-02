@@ -21,7 +21,7 @@ class EcoDefenseGame {
      */
     async init() {
         try {
-            console.log('生态防御游戏启动中...');
+            console.log('保卫家园游戏启动中...');
             
             // 初始化全局系统
             this.initializeGlobalSystems();
@@ -49,7 +49,7 @@ class EcoDefenseGame {
             // 显示欢迎信息
             this.showWelcomeMessage();
             
-            console.log('生态防御游戏启动成功！');
+            console.log('保卫家园游戏启动成功！');
             
         } catch (error) {
             console.error('游戏初始化失败:', error);

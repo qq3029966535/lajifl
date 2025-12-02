@@ -6,7 +6,7 @@ import { Scene } from '../core/Scene.js';
 export class MenuScene extends Scene {
     constructor() {
         super('MenuScene');
-        this.title = '生态防御游戏';
+        this.title = '保卫家园游戏';
         this.subtitle = '2150年，地球因垃圾污染濒临崩溃！\n你作为"环保卫士"，需在虚拟绿色家园中建立分类防线，\n阻止垃圾僵尸军团入侵生态核心区！';
         this.buttons = [
             { text: '开始游戏', action: 'startGame', x: 0, y: 0, width: 200, height: 60 },
